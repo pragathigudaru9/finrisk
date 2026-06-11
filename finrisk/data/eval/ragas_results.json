@@ -1,0 +1,100 @@
+{
+  "summary": {
+    "faithfulness": 0.9770533333333334,
+    "answer_relevance": 0.3008,
+    "context_precision": 0.6169266666666666,
+    "num_queries": 15
+  },
+  "per_query": [
+    {
+      "question": "What liquidity risks did Goldman Sachs disclose?",
+      "faithfulness": 1.0,
+      "answer_relevance": 0.4,
+      "context_precision": 0.5
+    },
+    {
+      "question": "What cybersecurity risks does Microsoft face?",
+      "faithfulness": 1.0,
+      "answer_relevance": 0.5,
+      "context_precision": 0.4545
+    },
+    {
+      "question": "How does Apple describe supply chain concentration risk?",
+      "faithfulness": 0.9756,
+      "answer_relevance": 0.1667,
+      "context_precision": 0.8462
+    },
+    {
+      "question": "What regulatory risks does JPMorgan Chase disclose?",
+      "faithfulness": 0.9444,
+      "answer_relevance": 0.2,
+      "context_precision": 0.8182
+    },
+    {
+      "question": "How does Tesla describe competition in the EV market?",
+      "faithfulness": 1.0,
+      "answer_relevance": 0.2,
+      "context_precision": 0.6429
+    },
+    {
+      "question": "What climate-related risks does ExxonMobil discuss?",
+      "faithfulness": 0.975,
+      "answer_relevance": 0.5,
+      "context_precision": 0.6364
+    },
+    {
+      "question": "What are NVIDIA's key semiconductor supply risks?",
+      "faithfulness": 0.9667,
+      "answer_relevance": 0.0,
+      "context_precision": 0.6364
+    },
+    {
+      "question": "How does Bank of America discuss interest rate risk?",
+      "faithfulness": 1.0,
+      "answer_relevance": 0.6667,
+      "context_precision": 0.75
+    },
+    {
+      "question": "What product liability risks does Johnson Johnson face?",
+      "faithfulness": 0.9474,
+      "answer_relevance": 0.4,
+      "context_precision": 0.5385
+    },
+    {
+      "question": "How does Boeing discuss safety and certification risks?",
+      "faithfulness": 1.0,
+      "answer_relevance": 0.2,
+      "context_precision": 0.75
+    },
+    {
+      "question": "What geopolitical risks does Google Alphabet disclose?",
+      "faithfulness": 1.0,
+      "answer_relevance": 0.2,
+      "context_precision": 0.4444
+    },
+    {
+      "question": "How does Pfizer discuss drug pipeline and patent risks?",
+      "faithfulness": 0.95,
+      "answer_relevance": 0.0,
+      "context_precision": 0.6364
+    },
+    {
+      "question": "What does Eli Lilly say about drug pricing risks?",
+      "faithfulness": 0.95,
+      "answer_relevance": 0.4286,
+      "context_precision": 0.4545
+    },
+    {
+      "question": "How does Chevron discuss environmental compliance risks?",
+      "faithfulness": 0.9737,
+      "answer_relevance": 0.4,
+      "context_precision": 0.6
+    },
+    {
+      "question": "What acquisition risks does Microsoft disclose?",
+      "faithfulness": 0.973,
+      "answer_relevance": 0.25,
+      "context_precision": 0.5455
+    }
+  ]
+}

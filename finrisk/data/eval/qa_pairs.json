@@ -1,0 +1,62 @@
+[
+  {
+    "question": "What liquidity risks did Goldman Sachs disclose?",
+    "ground_truth": "Goldman Sachs faces risks from market funding conditions, counterparty credit, and potential cash flow disruptions."
+  },
+  {
+    "question": "What cybersecurity risks does Microsoft face?",
+    "ground_truth": "Microsoft faces risks from cyberattacks, data breaches, ransomware, and cloud infrastructure vulnerabilities."
+  },
+  {
+    "question": "How does Apple describe supply chain concentration risk?",
+    "ground_truth": "Apple depends on single or limited suppliers for certain components, making it vulnerable to supply disruptions."
+  },
+  {
+    "question": "What regulatory risks does JPMorgan Chase disclose?",
+    "ground_truth": "JPMorgan faces evolving financial regulations, capital requirements, and compliance obligations across jurisdictions."
+  },
+  {
+    "question": "How does Tesla describe competition in the EV market?",
+    "ground_truth": "Tesla faces increasing competition from traditional automakers and new EV companies across all vehicle segments."
+  },
+  {
+    "question": "What climate-related risks does ExxonMobil discuss?",
+    "ground_truth": "ExxonMobil discusses transition risks, physical climate risks, and market shifts toward lower-carbon energy."
+  },
+  {
+    "question": "What are NVIDIA's key semiconductor supply risks?",
+    "ground_truth": "NVIDIA faces risks from semiconductor supply shortages, manufacturing dependencies, and competitive pressure."
+  },
+  {
+    "question": "How does Bank of America discuss interest rate risk?",
+    "ground_truth": "Bank of America discloses sensitivity to rate changes affecting net interest income and investment portfolios."
+  },
+  {
+    "question": "What product liability risks does Johnson Johnson face?",
+    "ground_truth": "J&J faces product liability risks from ongoing litigation related to pharmaceutical and consumer health products."
+  },
+  {
+    "question": "How does Boeing discuss safety and certification risks?",
+    "ground_truth": "Boeing discloses risks from aircraft safety investigations, FAA certification, and production quality oversight."
+  },
+  {
+    "question": "What geopolitical risks does Google Alphabet disclose?",
+    "ground_truth": "Alphabet discusses international regulations, data localization requirements, and geopolitical tensions."
+  },
+  {
+    "question": "How does Pfizer discuss drug pipeline and patent risks?",
+    "ground_truth": "Pfizer discloses risks from clinical trial outcomes, approval timelines, and patent expirations."
+  },
+  {
+    "question": "What does Eli Lilly say about drug pricing risks?",
+    "ground_truth": "Eli Lilly discusses government pricing negotiations, insurance coverage changes, and pharma pricing pressure."
+  },
+  {
+    "question": "How does Chevron discuss environmental compliance risks?",
+    "ground_truth": "Chevron discloses risks from environmental regulations, remediation obligations, and operational liability."
+  },
+  {
+    "question": "What acquisition risks does Microsoft disclose?",
+    "ground_truth": "Microsoft discusses integration challenges, regulatory approval uncertainty, and business impact from acquisitions."
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "fixed": {
+    "Hit@5": 0.2,
+    "Hit@10": 0.3,
+    "MRR": 0.096,
+    "NDCG@5": 0.038,
+    "NDCG@10": 0.035,
+    "n_queries": 20
+  },
+  "section_aware": {
+    "Hit@5": 0.25,
+    "Hit@10": 0.3,
+    "MRR": 0.129,
+    "NDCG@5": 0.072,
+    "NDCG@10": 0.061,
+    "n_queries": 20
+  },
+  "bm25_only": {
+    "Hit@5": 0.2,
+    "MRR": 0.117,
+    "n_queries": 20
+  },
+  "faiss_only": {
+    "Hit@5": 0.25,
+    "MRR": 0.102,
+    "n_queries": 20
+  }
+}

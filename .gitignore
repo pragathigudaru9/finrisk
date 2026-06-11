@@ -1,0 +1,64 @@
+# FinRisk AI — .gitignore
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ── Virtual environments ──────────────────────────────────────
+miho/
+venv/
+.venv/
+env/
+ENV/
+
+# ── Large model & data artifacts (not tracked in Git) ─────────
+finrisk/models/faiss_*/
+finrisk/models/bm25_*.pkl
+finrisk/models/section_classifier/
+finrisk/data/raw_filings/
+finrisk/data/chunks/
+finrisk/data/financials/
+finrisk/data/sentiment/
+finrisk/data/sec-edgar-filings/
+*.parquet
+*.faiss
+*.pkl
+
+# ── Generated pipeline log ────────────────────────────────────
+finrisk/pipeline.log
+
+# ── Jupyter notebooks checkpoints ─────────────────────────────
+.ipynb_checkpoints/
+
+# ── macOS ─────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── IDE ───────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── Secrets (never commit these) ─────────────────────────────
+.env
+*.key
+secrets.json
+
+# ── Streamlit cache ───────────────────────────────────────────
+.streamlit/
+
+# Note: finrisk/data/processed/finrisk_sections.parquet IS tracked
+# because it is the core ingested dataset.
+# Add it explicitly:
+!finrisk/data/processed/finrisk_sections.parquet
+!finrisk/data/eval/qa_pairs.json
+!finrisk/data/eval/ablation_results.json
+!finrisk/data/eval/ragas_results.json
