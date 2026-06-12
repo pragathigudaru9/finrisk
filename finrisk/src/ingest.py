@@ -22,9 +22,13 @@ from sec_edgar_downloader import Downloader
 # Add parent to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
-    COMPANIES, YEARS, RAW_DIR, PROCESSED_DIR,
-    SEC_COMPANY_NAME, SEC_EMAIL, DATA_DIR
+    AVAILABLE_TICKERS, RAW_DIR, PROCESSED_DIR,
+    SEC_COMPANY_NAME, SEC_EMAIL, DATA_DIR,
 )
+
+# Legacy alias so old acceptance tests still pass
+COMPANIES = AVAILABLE_TICKERS
+YEARS = [2023, 2024, 2025]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -419,3 +423,120 @@ if __name__ == "__main__":
     df = build_sections_parquet()
     if not df.empty:
         run_acceptance_tests(df)
+
+
+# ──────────────────────────────────────────────────────────────
+# Single-company on-demand ingestion (new architecture)
+# ──────────────────────────────────────────────────────────────
+
+def download_company_latest(ticker: str) -> pd.DataFrame:
+    """
+    Download the latest 10-K and 2 most recent 10-Qs for a single ticker on demand.
+
+    Returns a DataFrame with columns:
+        ticker, filing_type, period_label, section_type, raw_text
+
+    period_label values:
+      - "current_quarter"  → most recent 10-Q
+      - "previous_quarter" → second most recent 10-Q
+      - "annual"           → latest 10-K
+    """
+    import shutil
+
+    download_dir = str(DATA_DIR)
+    dl = Downloader(SEC_COMPANY_NAME, SEC_EMAIL, download_dir)
+
+    logger.info(f"Downloading filings for {ticker}...")
+
+    filings_meta = []
+
+    # Download 10-Q (latest 2) and 10-K (latest 1)
+    for filing_type, limit, labels in [
+        ("10-Q", 2, ["current_quarter", "previous_quarter"]),
+        ("10-K", 1, ["annual"]),
+    ]:
+        try:
+            dl.get(filing_type, ticker, limit=limit)
+            logger.info(f"  {ticker}: {filing_type} download complete")
+        except Exception as e:
+            logger.warning(f"  {ticker}: {filing_type} download failed — {e}")
+
+        # Collect downloaded filing paths in reverse-chronological order (newest first)
+        ticker_dir = DATA_DIR / "sec-edgar-filings" / ticker / filing_type
+        if not ticker_dir.exists():
+            logger.warning(f"  {ticker}: No {filing_type} filings found at {ticker_dir}")
+            continue
+
+        accession_dirs = sorted(
+            [d for d in ticker_dir.iterdir() if d.is_dir()],
+            reverse=True,  # newest accession numbers first
+        )
+
+        for label, acc_dir in zip(labels, accession_dirs):
+            filing_file = acc_dir / "full-submission.txt"
+            if not filing_file.exists():
+                # Try primary-document.htm
+                candidates = list(acc_dir.glob("*.htm")) + list(acc_dir.glob("*.html"))
+                if not candidates:
+                    logger.warning(f"  {ticker}: No filing document in {acc_dir}")
+                    continue
+                filing_file = candidates[0]
+
+            try:
+                text = filing_file.read_text(encoding="utf-8", errors="replace")
+            except Exception as e:
+                logger.error(f"  Cannot read {filing_file}: {e}")
+                continue
+
+            for section_type in ["Risk Factors", "MD&A", "Financial Statements"]:
+                section_text = extract_section(text, section_type)
+                if section_text and len(section_text) >= 500:
+                    filings_meta.append({
+                        "ticker": ticker,
+                        "filing_type": filing_type,
+                        "period_label": label,
+                        "section_type": section_type,
+                        "raw_text": section_text,
+                    })
+                    logger.info(f"  ✓ [{label}] {section_type}: {len(section_text):,} chars")
+                else:
+                    logger.debug(f"  ✗ [{label}] {section_type}: not found or too short")
+
+    df = pd.DataFrame(filings_meta)
+
+    if df.empty:
+        logger.warning(
+            f"{ticker}: No sections extracted. "
+            "This may happen if SEC EDGAR has no recent filings or the filing format is non-standard. "
+            "Falling back to existing parquet data if available."
+        )
+        # Fallback: pull from existing parquet if ingested during bulk stage
+        parquet_path = PROCESSED_DIR / "finrisk_sections.parquet"
+        if parquet_path.exists():
+            existing = pd.read_parquet(parquet_path)
+            ticker_data = existing[existing["ticker"] == ticker].copy()
+            if not ticker_data.empty:
+                # Map most recent year → current_quarter, previous year → previous_quarter,
+                # oldest → annual (best approximation without quarterly data)
+                years = sorted(ticker_data["year"].unique(), reverse=True)
+                label_map = {}
+                if len(years) >= 1:
+                    label_map[years[0]] = "current_quarter"
+                if len(years) >= 2:
+                    label_map[years[1]] = "previous_quarter"
+                if len(years) >= 3:
+                    label_map[years[2]] = "annual"
+                ticker_data["period_label"] = ticker_data["year"].map(
+                    lambda y: label_map.get(y, "annual")
+                )
+                ticker_data["filing_type"] = "10-K"
+                logger.info(
+                    f"  Loaded {len(ticker_data)} rows from existing parquet "
+                    f"for {ticker} as fallback"
+                )
+                return ticker_data[
+                    ["ticker", "filing_type", "period_label", "section_type", "raw_text"]
+                ].reset_index(drop=True)
+
+    return df.reset_index(drop=True)
+

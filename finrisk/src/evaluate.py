@@ -380,3 +380,78 @@ def run_ragas_evaluation() -> dict:
 if __name__ == "__main__":
     ablation = run_chunking_ablation()
     ragas = run_ragas_evaluation()
+
+
+# ──────────────────────────────────────────────────────────────
+# Risk extraction accuracy evaluation (new)
+# ──────────────────────────────────────────────────────────────
+
+def evaluate_risk_extraction(
+    labeled_path: str | None = None,
+) -> dict:
+    """
+    Measure zero-shot classifier accuracy against hand-labeled filing chunks.
+
+    labeled_path: path to JSON file with list of
+        {"text": "...", "true_label": "Regulatory"}
+        If None, uses data/eval/labeled_risk_chunks.json by default.
+
+    Returns: sklearn classification_report as a dict.
+    Prints the full text report.
+    Requires >= 75% accuracy to pass the acceptance test.
+    """
+    import json
+    from sklearn.metrics import classification_report, accuracy_score
+
+    if labeled_path is None:
+        labeled_path = str(EVAL_DIR / "labeled_risk_chunks.json")
+
+    p = Path(labeled_path)
+    if not p.exists():
+        raise FileNotFoundError(f"Labeled data not found: {p}")
+
+    with open(p) as f:
+        labeled = json.load(f)
+
+    logger.info(f"Evaluating zero-shot classifier on {len(labeled)} labeled chunks...")
+
+    texts = [item["text"] for item in labeled]
+    true_labels = [item["true_label"] for item in labeled]
+
+    from src.extract_risks import load_classifier, RISK_CATEGORIES
+    clf = load_classifier()
+
+    pred_labels = []
+    for i, text in enumerate(texts):
+        result = clf(text[:1024], RISK_CATEGORIES, multi_label=False)
+        pred_labels.append(result["labels"][0])
+        if (i + 1) % 10 == 0:
+            logger.info(f"  Evaluated {i + 1}/{len(texts)}")
+
+    acc = accuracy_score(true_labels, pred_labels)
+    report_str = classification_report(
+        true_labels, pred_labels, zero_division=0
+    )
+    report_dict = classification_report(
+        true_labels, pred_labels, output_dict=True, zero_division=0
+    )
+
+    print("\n" + "=" * 60)
+    print("RISK EXTRACTION ACCURACY EVALUATION")
+    print("=" * 60)
+    print(report_str)
+    print(f"Overall Accuracy: {acc:.1%}")
+    if acc >= 0.75:
+        print("✓ PASS: Accuracy >= 75%")
+    else:
+        print(f"⚠ WARN: Accuracy {acc:.1%} below 75% target")
+    print("=" * 60)
+
+    # Save results alongside other eval files
+    out = EVAL_DIR / "risk_extraction_results.json"
+    with open(out, "w") as f:
+        json.dump({"accuracy": acc, "report": report_dict}, f, indent=2)
+    logger.info(f"Saved risk extraction evaluation to {out}")
+
+    return report_dict
+

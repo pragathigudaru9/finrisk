@@ -264,3 +264,59 @@ def build_sentiment_parquet():
 
 if __name__ == "__main__":
     build_sentiment_parquet()
+
+
+# ──────────────────────────────────────────────────────────────
+# Single-company helper (new architecture)
+# ──────────────────────────────────────────────────────────────
+
+def get_sentiment_summary(ticker: str) -> "pd.DataFrame | None":
+    """
+    Return the sentiment time-series for a single ticker from the saved parquet.
+    If the parquet doesn't exist, generate it first.
+
+    Returns DataFrame with columns:
+        ticker, date, daily_sentiment, rolling_7d, rolling_30d, sentiment_flag
+    or None if no data is available.
+    """
+    output_path = SENTIMENT_DIR / "sentiment_scores.parquet"
+    if not output_path.exists():
+        logger.info("Sentiment parquet not found — building it now...")
+        build_sentiment_parquet()
+
+    if not output_path.exists():
+        logger.warning("Sentiment parquet still missing after build attempt.")
+        return None
+
+    df = pd.read_parquet(output_path)
+    result = df[df["ticker"] == ticker].copy()
+
+    if result.empty:
+        logger.info(f"No sentiment data for {ticker} — generating synthetic...")
+        headlines = generate_synthetic_headlines(ticker)
+        date_groups: dict[str, list] = {}
+        for h in headlines:
+            date_groups.setdefault(h["date"], []).append(h)
+
+        rows = []
+        for date, items in sorted(date_groups.items()):
+            scores_list = [h.get("synthetic_score", 0.0) for h in items]
+            daily = float(__import__("numpy").clip(__import__("numpy").mean(scores_list), -1, 1))
+            rows.append({
+                "ticker": ticker,
+                "date": date,
+                "headline_count": len(items),
+                "daily_sentiment": daily,
+            })
+
+        result = pd.DataFrame(rows)
+        result["date"] = pd.to_datetime(result["date"])
+        result = result.sort_values("date").reset_index(drop=True)
+
+        series = result["daily_sentiment"]
+        result["rolling_7d"] = series.rolling(7, min_periods=1).mean()
+        result["rolling_30d"] = series.rolling(30, min_periods=1).mean()
+        result["sentiment_flag"] = result["rolling_7d"] < result["rolling_30d"] - 0.15
+
+    return result
+

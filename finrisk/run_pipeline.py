@@ -1,23 +1,20 @@
 """
-FinRisk — Full Pipeline Runner
+FinRisk — Pipeline Runner
 
-Run all pipeline stages sequentially:
-  Stage 3: Chunking
-  Stage 4: Indexing (FAISS + BM25)
-  Stage 6A: Sentiment (FinBERT)
-  Stage 6B: Altman Z-Score
-  Stage 7: Risk Intelligence (composite scores + YoY trends)
-  Stage 8B: Evaluation (ablation + RAGAS)
+Run pipeline stages for a single company or for evaluation.
 
 Usage:
   cd finrisk/
-  python run_pipeline.py [--stages 3 4 6a 6b 7 8]
+  python run_pipeline.py --ticker AAPL
+  python run_pipeline.py --ticker NVDA --stages 3 4
+  python run_pipeline.py --stages 8        # evaluation only (no ticker needed)
 
-Example (run all):
-  python run_pipeline.py
-
-Example (only stages 6–8):
-  python run_pipeline.py --stages 6a 6b 7 8
+Stages:
+  3    Chunking (fixed + section-aware)
+  4    Indexing (FAISS + BM25)
+  6a   Sentiment (FinBERT)
+  6b   Altman Z-Score (yfinance)
+  8    Evaluation (chunking ablation + RAGAS + risk extraction accuracy)
 """
 
 import argparse
@@ -26,7 +23,6 @@ import sys
 import time
 from pathlib import Path
 
-# Ensure project root is in path
 sys.path.insert(0, str(Path(__file__).parent))
 
 logging.basicConfig(
@@ -58,50 +54,75 @@ def run_stage(name: str, fn, *args, **kwargs):
 def main():
     parser = argparse.ArgumentParser(description="FinRisk Pipeline Runner")
     parser.add_argument(
+        "--ticker",
+        type=str,
+        default=None,
+        help="Company ticker to analyze (e.g. AAPL, NVDA). Required for stages 1, 6a, 6b.",
+    )
+    parser.add_argument(
         "--stages", nargs="+",
-        default=["3", "4", "6a", "6b", "7", "8"],
-        help="Stages to run (e.g. 3 4 6a 6b 7 8)",
+        default=["3", "4", "6a", "6b", "8"],
+        help="Stages to run (e.g. 3 4 6a 6b 8). Stage 1 requires --ticker.",
     )
     args = parser.parse_args()
     stages = [s.lower() for s in args.stages]
+    ticker = args.ticker.upper() if args.ticker else None
 
     logger.info("╔══════════════════════════════════════════════════════════╗")
-    logger.info("║            FinRisk — Full Pipeline Runner                  ║")
+    logger.info("║          FinRisk — Single-Company Pipeline Runner         ║")
     logger.info("╚══════════════════════════════════════════════════════════╝")
-    logger.info(f"Stages to run: {stages}")
+    if ticker:
+        logger.info(f"Company: {ticker}")
+    logger.info(f"Stages:  {stages}")
 
+    # Stage 1: Single-company ingestion
+    if "1" in stages:
+        if not ticker:
+            logger.error("Stage 1 requires --ticker (e.g. --ticker AAPL)")
+            sys.exit(1)
+        from src.ingest import download_company_latest
+        sections_df = run_stage(
+            f"Stage 1: Ingest {ticker}", download_company_latest, ticker
+        )
+        logger.info(f"  Got {len(sections_df)} sections for {ticker}")
+
+    # Stage 3: Chunking (builds from existing parquet if available)
     if "3" in stages:
         from src.chunk import build_all_chunks, run_acceptance_tests as chunk_tests
         run_stage("Stage 3: Chunking", build_all_chunks)
         chunk_tests()
 
+    # Stage 4: Indexing
     if "4" in stages:
         from src.index import build_all_indexes, test_retrieval, run_acceptance_tests as index_tests
         run_stage("Stage 4: Indexing", build_all_indexes)
         test_retrieval()
         index_tests()
 
+    # Stage 6A: FinBERT Sentiment
     if "6a" in stages:
         from src.sentiment import build_sentiment_parquet
         run_stage("Stage 6A: Sentiment", build_sentiment_parquet)
 
+    # Stage 6B: Altman Z-Score
     if "6b" in stages:
         from src.zscore import build_zscore_parquet
         run_stage("Stage 6B: Z-Score", build_zscore_parquet)
 
-    if "7" in stages:
-        from src.risk_score import build_risk_profiles, run_acceptance_tests as risk_tests
-        scores_df, trends_df = run_stage("Stage 7: Risk Intelligence", build_risk_profiles)
-        risk_tests(scores_df, trends_df)
-
+    # Stage 8: Evaluation
     if "8" in stages:
-        from src.evaluate import run_chunking_ablation, run_ragas_evaluation
-        run_stage("Stage 8B-Ablation: Chunking Ablation", run_chunking_ablation)
-        run_stage("Stage 8B-RAGAS: RAG Quality Eval", run_ragas_evaluation)
+        from src.evaluate import run_chunking_ablation, run_ragas_evaluation, evaluate_risk_extraction
+        run_stage("Stage 8A: Chunking Ablation", run_chunking_ablation)
+        run_stage("Stage 8B: RAGAS Evaluation", run_ragas_evaluation)
+        labeled_path = Path(__file__).parent / "data" / "eval" / "labeled_risk_chunks.json"
+        if labeled_path.exists():
+            run_stage("Stage 8C: Risk Extraction Accuracy", evaluate_risk_extraction)
+        else:
+            logger.warning("Skipping Stage 8C: labeled_risk_chunks.json not found")
 
-    logger.info("\n" + "="*70)
-    logger.info("✅ ALL STAGES COMPLETE — Ready to run: streamlit run app.py")
-    logger.info("="*70)
+    logger.info("\n" + "=" * 70)
+    logger.info("✅ ALL STAGES COMPLETE — Run: streamlit run app.py")
+    logger.info("=" * 70)
 
 
 if __name__ == "__main__":

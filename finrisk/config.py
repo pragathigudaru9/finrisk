@@ -47,30 +47,19 @@ SEC_COMPANY_NAME = os.getenv("SEC_COMPANY_NAME", "FinRiskResearch")
 SEC_EMAIL = os.getenv("SEC_EMAIL", "finrisk@research.edu")
 
 # ──────────────────────────────────────────────────────────────
-# Companies: 15 large-cap US equities across 6 sectors
-# (subset of data already ingested — 26 tickers available)
+# Available tickers for single-company analysis
 # ──────────────────────────────────────────────────────────────
-COMPANIES = [
-    # Tech (5)
-    "AAPL", "MSFT", "GOOGL", "NVDA", "TSLA",
-    # Finance (3)
-    "JPM", "GS", "BAC",
-    # Healthcare (3)
-    "JNJ", "PFE", "LLY",
-    # Energy (2)
-    "XOM", "CVX",
-    # Consumer (1)
-    "WMT",
-    # Industrial/Airlines (1)
-    "BA",
+AVAILABLE_TICKERS = [
+    "AAPL", "MSFT", "GOOGL", "NVDA", "TSLA", "AMD", "META", "INTC",
+    "JPM", "GS", "BAC", "MS", "C",
+    "JNJ", "PFE", "LLY", "MRK", "ABBV",
+    "XOM", "CVX", "COP",
+    "WMT", "PG", "KO",
+    "BA", "CAT", "GE", "DAL", "AAL",
 ]
 
-# All 26 tickers available in data (for full-corpus retrieval)
-ALL_TICKERS = [
-    "AAL", "AAPL", "ABBV", "AMD", "BA", "BAC", "CAT", "COP", "CVX",
-    "DAL", "GOOGL", "GS", "JNJ", "JPM", "KO", "LLY", "META", "MRK",
-    "MS", "MSFT", "NVDA", "PFE", "PG", "TSLA", "WMT", "XOM",
-]
+# Legacy alias kept for modules that reference ALL_TICKERS
+ALL_TICKERS = AVAILABLE_TICKERS
 
 # Ticker → full company name
 COMPANY_NAMES = {
@@ -91,7 +80,7 @@ COMPANY_NAMES = {
 SECTOR_MAP = {
     "AAPL": "Technology", "MSFT": "Technology", "GOOGL": "Technology",
     "NVDA": "Technology", "TSLA": "Consumer Discretionary",
-    "AMD": "Technology", "META": "Technology",
+    "AMD": "Technology", "META": "Technology", "INTC": "Technology",
     "JPM": "Financials", "GS": "Financials", "BAC": "Financials",
     "MS": "Financials", "C": "Financials",
     "JNJ": "Healthcare", "PFE": "Healthcare", "LLY": "Healthcare",
@@ -102,9 +91,16 @@ SECTOR_MAP = {
     "DAL": "Industrials", "AAL": "Industrials",
 }
 
-# Data years (what we actually have in the parquet)
-YEARS = [2023, 2024, 2025]
-YEAR_PAIRS = [(2023, 2024), (2024, 2025)]
+# ──────────────────────────────────────────────────────────────
+# Zero-shot risk categories (for extract_risks.py)
+# ──────────────────────────────────────────────────────────────
+RISK_CATEGORIES = [
+    "Regulatory", "Supply Chain", "Demand", "Liquidity",
+    "Cybersecurity", "Legal", "Credit", "Geopolitical",
+]
+
+# Flag a category when quarter-over-quarter mention count increases > this %
+RISK_SPIKE_THRESHOLD = 0.50  # 50%
 
 # ──────────────────────────────────────────────────────────────
 # Model names
@@ -113,6 +109,7 @@ BGE_EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"         # 130MB — fast, space-e
 BGE_RERANKER_MODEL  = "cross-encoder/ms-marco-MiniLM-L-6-v2"  # 82MB — fast cross-encoder
 FINBERT_MODEL = "ProsusAI/finbert"
 SECTION_CLASSIFIER_MODEL = "distilbert-base-uncased"
+ZERO_SHOT_MODEL = "facebook/bart-large-mnli"
 
 # ──────────────────────────────────────────────────────────────
 # Chunking config
@@ -125,18 +122,3 @@ FIXED_CHUNK_OVERLAP = 100    # tokens
 # ──────────────────────────────────────────────────────────────
 TOP_K_RETRIEVAL = 20         # candidates from hybrid search (each leg)
 TOP_K_RERANKED = 5           # final chunks after reranking
-
-# ──────────────────────────────────────────────────────────────
-# Risk score weights
-# ──────────────────────────────────────────────────────────────
-WEIGHT_FILING = 0.40
-WEIGHT_SENTIMENT = 0.35
-WEIGHT_ZSCORE = 0.25
-
-# ──────────────────────────────────────────────────────────────
-# YoY similarity threshold
-# ──────────────────────────────────────────────────────────────
-YOY_SIMILARITY_THRESHOLD = 0.85
-
-# Sentence-level novelty threshold (new risk if max_similarity < this)
-YOY_SENTENCE_NOVELTY_THRESHOLD = 0.72
