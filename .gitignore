@@ -1,4 +1,4 @@
-# FinRisk AI — .gitignore
+# FinRisk — .gitignore
 
 # ── Python ────────────────────────────────────────────────────
 __pycache__/
@@ -54,6 +54,10 @@ secrets.json
 
 # ── Streamlit cache ───────────────────────────────────────────
 .streamlit/
+
+# ── Root-level scratch / documentation not part of the project ──
+requirements.txt
+finrisk_crash_course.md
 
 # Note: finrisk/data/processed/finrisk_sections.parquet IS tracked
 # because it is the core ingested dataset.

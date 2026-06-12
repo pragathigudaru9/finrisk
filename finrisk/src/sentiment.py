@@ -1,5 +1,5 @@
 """
-FinRisk AI — Stage 6A: FinBERT Sentiment Pipeline
+FinRisk — Stage 6A: FinBERT Sentiment Pipeline
 
 Scores news headlines for each company using FinBERT.
 Computes daily, 7-day, and 30-day rolling sentiment averages.

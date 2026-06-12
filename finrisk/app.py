@@ -1,12 +1,12 @@
 """
-FinRisk AI — Streamlit Dashboard (Stage 9)
+FinRisk — Streamlit Dashboard (Stage 9)
 
 5-page research-grade dashboard:
   1. 🏠 Company Overview    — risk gauges, Z-Score, sector view
   2. 🔍 Risk Explorer       — browse & filter retrieved chunks
   3. 📰 Sentiment Trends    — FinBERT 30-day sentiment charts
   4. 🔄 Emerging Risks      — YoY cosine similarity & new risk sentences
-  5. 🤖 AI Assistant        — RAG chatbot powered by Groq Llama-3.3-70b
+  5. 💬 Risk Assistant      — RAG chatbot powered by Groq Llama-3.3-70b
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from config import (
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="FinRisk AI — Equity Risk Intelligence",
+    page_title="FinRisk — Equity Risk Intelligence",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -142,7 +142,7 @@ def load_rag():
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 def render_sidebar():
     with st.sidebar:
-        st.markdown("## 📊 FinRisk AI")
+        st.markdown("## 📊 FinRisk")
         st.markdown("<small style='color:#94a3b8'>Equity Risk Intelligence System</small>", unsafe_allow_html=True)
         st.divider()
 
@@ -537,11 +537,11 @@ def page_emerging():
     )
     st.plotly_chart(fig_trend, use_container_width=True)
 
-# ── PAGE 5: AI Assistant ──────────────────────────────────────────────────────
+# ── PAGE 5: Risk Assistant ──────────────────────────────────────────────────────
 def page_assistant():
-    st.markdown("## 🤖 AI Assistant")
+    st.markdown("## 💬 Risk Assistant")
     st.markdown("Ask any question about company risks, SEC filings, or financial health. "
-                "Powered by **Groq Llama-3.3-70b** with citation-backed hybrid RAG.")
+                "Powered by citation-backed hybrid RAG.")
 
     rag = load_rag()
     if rag is None:
@@ -572,12 +572,12 @@ def page_assistant():
 
     col_btn, col_k = st.columns([2, 1])
     with col_btn:
-        ask = st.button("🔍 Ask FinRisk AI", type="primary", key="ask_btn")
+        ask = st.button("🔍 Ask FinRisk", type="primary", key="ask_btn")
     with col_k:
         top_k = st.selectbox("Chunks", [3, 5, 8], index=1, key="rag_k")
 
     if ask and question.strip():
-        with st.spinner("🔍 Retrieving from 15,000+ chunks · 🤖 Generating with Groq Llama-3.3-70b..."):
+        with st.spinner("🔍 Retrieving from 15,000+ chunks · Generating answer with Groq Llama-3.3-70b..."):
             result = rag.query(question.strip(), top_k=top_k)
 
         answer = result["answer"]
@@ -643,7 +643,7 @@ def main():
         "🔍 Risk Explorer",
         "📰 Sentiment Trends",
         "🔄 Emerging Risks",
-        "🤖 AI Assistant",
+        "💬 Risk Assistant",
     ])
 
     with tab1:

@@ -1,5 +1,5 @@
 """
-FinRisk AI — Stage 6B: Altman Z-Score Computation
+FinRisk — Stage 6B: Altman Z-Score Computation
 
 Computes Altman Z-Score for each company using yfinance financial data.
 Z = 1.2×X1 + 1.4×X2 + 3.3×X3 + 0.6×X4 + 1.0×X5

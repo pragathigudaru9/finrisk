@@ -1,5 +1,5 @@
 """
-FinRisk AI — Comprehensive Test Suite
+FinRisk — Comprehensive Test Suite
 
 Tests cover:
   - Configuration & paths

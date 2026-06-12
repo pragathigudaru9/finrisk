@@ -1,5 +1,5 @@
 """
-FinRisk AI — Central Configuration
+FinRisk — Central Configuration
 All paths, API keys, company lists, model names, and hyperparameters.
 """
 

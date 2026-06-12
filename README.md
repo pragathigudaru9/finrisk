@@ -1,113 +1,148 @@
-# FinRisk AI 📊
+# FinRisk — Equity Risk Intelligence System
 
-**An Explainable Equity Risk Intelligence System using Hybrid RAG**
+An end-to-end NLP pipeline that reads SEC 10-K filings, scores companies on
+financial health and news sentiment, and surfaces risk insights through a
+conversational retrieval interface.
 
-> Built as a research-grade PGDBA capstone project targeting Decision Scientist, Applied Scientist, Quant Research, and AI Engineer roles.
-
----
-
-## 🎯 Problem Statement
-
-Investors and analysts must read hundreds of pages of SEC 10-K filings to identify key business risks, emerging risks, and changes in risk profile over time — a process that is manual, time-consuming, and impossible to scale.
-
-**FinRisk AI** automatically extracts, retrieves, analyzes, and *explains* company risks using:
-- SEC 10-K filings (26 companies, 3 years)
-- Financial news sentiment (FinBERT)
-- Financial health indicators (Altman Z-Score)
+Built as part of a PGDBA capstone project at IIM Calcutta.
 
 ---
 
-## 🏗️ Architecture
+## Motivation
+
+Portfolio managers tracking 15–30 US equities need to stay on top of risk
+disclosures buried across hundreds of pages of regulatory filings, financial
+statements, and daily news. Reading every 10-K manually is not feasible.
+
+This project automates that process: it downloads filings, extracts the
+three most risk-relevant sections, chunks and indexes them, runs sentiment
+analysis and Altman Z-Score computation in parallel, and then combines
+everything into a single composite risk score per company. A five-page
+Streamlit dashboard and a conversational retrieval interface make the results
+accessible without writing any queries.
+
+---
+
+## Architecture
 
 ```
-SEC Filings (10-K)
-        │
-        ▼
-Section Extraction          News Headlines
-(Item 1A Risk Factors)           │
-        │                   FinBERT NLP
-        ▼                        │
-Smart Chunking            Sentiment Score ─┐
-        │                                  │
-        ▼                            ┌─────▼──────┐
-BGE Embeddings               Altman  │   Risk     │
-        │                   Z-Score─►│  Profile   │
-  ┌─────┴──────┐                     └─────┬──────┘
-  │   FAISS    │                           │
-  │  (Dense)   │◄──────────────────────────┤
-  └─────┬──────┘                           │
-        │        Hybrid                    │
-  ┌─────┴──────┐ Retrieval                 │
-  │    BM25    │                           │
-  │  (Sparse)  │                           │
-  └─────┬──────┘                           │
-        │                                  │
-        ▼                                  │
- Cross-Encoder Reranker                    │
-  (BGE-reranker-base)                      │
-        │                                  │
-        ▼                                  │
-   Top 5 Chunks                            │
-        │                                  │
-        ▼                                  │
- RAG (Groq Llama-3.3-70b)                  │
-        │                                  │
-        ▼                                  ▼
-  Risk Explanation ──────────────► Dashboard (Streamlit)
+SEC EDGAR (10-K filings)
+         │
+         ▼
+  Section Extraction                News Headlines
+  Item 1A — Risk Factors                 │
+  Item 7  — MD&A                    FinBERT NLP
+  Item 8  — Financial Statements         │
+         │                     Sentiment Score (−1 to +1)
+         ▼                              │
+Section-Aware Chunking                  │
+         │                         ┌───▼──────────┐
+         ▼                         │   Composite   │
+  BGE Embeddings ──► FAISS         │  Risk Profile │◄── Altman Z-Score
+  Tokenized text ──► BM25          │               │    (yfinance data)
+                                   └───────┬───────┘
+  Hybrid Retrieval (FAISS + BM25)          │
+         │                                 │
+  Cross-Encoder Reranker                   │
+         │                                 │
+   Top-5 Chunks                            │
+         │                                 │
+  Groq Llama-3.3-70b                       │
+  (or extractive fallback)                 │
+         │                                 ▼
+   Risk Explanation ──────────► Streamlit Dashboard
 ```
 
 ---
 
-## 📦 Modules
+## Pipeline Stages
 
-| Module | Stage | Description |
-|--------|-------|-------------|
-| `src/ingest.py` | 1 | Download & parse SEC 10-K filings |
-| `src/classify.py` | 2 | Section classifier (DistilBERT) |
-| `src/chunk.py` | 3 | Fixed-size + section-aware chunking |
-| `src/index.py` | 4 | FAISS + BM25 index building |
-| `src/retrieve.py` | 5 | Hybrid retrieval + cross-encoder reranking |
-| `src/sentiment.py` | 6A | FinBERT news sentiment pipeline |
-| `src/zscore.py` | 6B | Altman Z-Score computation |
-| `src/risk_score.py` | 7 | Composite risk scoring + YoY trend detection |
-| `src/rag.py` | 8A | Conversational RAG (Groq Llama-3.3-70b) |
-| `src/evaluate.py` | 8B | Chunking ablation + RAGAS evaluation |
-| `app.py` | 9 | 5-page Streamlit dashboard |
+| Stage | Module | Description |
+|-------|--------|-------------|
+| 1 | `src/ingest.py` | Download 10-K filings from SEC EDGAR and parse Risk Factors, MD&A, Financial Statements using BeautifulSoup + regex |
+| 2 | `src/classify.py` | Fine-tune DistilBERT to detect and filter boilerplate text from parsed sections |
+| 3 | `src/chunk.py` | Split sections using two strategies: fixed 512-token windows (with overlap) and paragraph-aware section chunking |
+| 4 | `src/index.py` | Build FAISS dense index (BGE embeddings) and BM25 sparse index for both chunking strategies |
+| 5 | `src/retrieve.py` | Hybrid retrieval: merge FAISS + BM25 candidates, rerank with a cross-encoder, return top-5 |
+| 6A | `src/sentiment.py` | Fetch news headlines via NewsAPI, score with FinBERT, compute 7-day and 30-day rolling averages |
+| 6B | `src/zscore.py` | Pull balance sheet data from yfinance and compute Altman Z-Score for each company |
+| 7 | `src/risk_score.py` | Combine filing risk, sentiment risk, and Z-Score risk into a weighted composite score (0–100); detect YoY risk language changes using cosine similarity |
+| 8A | `src/rag.py` | Answer natural language queries using the retrieved chunks and Groq Llama-3.3-70b |
+| 8B | `src/evaluate.py` | Chunking ablation study (Hit@5, Hit@10, MRR, NDCG) and RAGAS-style quality evaluation |
+| 9 | `app.py` | Five-page Streamlit dashboard |
 
 ---
 
-## 🚀 Quick Start
+## Research Results
 
-### 1. Clone & Install
+### Chunking and Retrieval Ablation
+
+| Method | Hit@5 | Hit@10 | MRR | NDCG@5 |
+|--------|-------|--------|-----|--------|
+| BM25 only | 0.200 | — | 0.117 | — |
+| FAISS only | 0.250 | — | 0.102 | — |
+| Hybrid fixed-size | 0.200 | 0.300 | 0.096 | 0.038 |
+| **Hybrid section-aware** | **0.250** | **0.300** | **0.129** | **0.072** |
+
+Section-aware chunking improves MRR by ~25% over fixed-size chunking, which
+validates the hypothesis that respecting paragraph boundaries leads to more
+coherent retrieval units.
+
+### RAG Quality (RAGAS-style)
+
+| Metric | Score |
+|--------|-------|
+| Faithfulness | 0.977 |
+| Answer Relevance | 0.301 |
+| Context Precision | 0.617 |
+
+Faithfulness is high because answers are constrained to text that appears in
+the retrieved chunks. Answer relevance improves significantly when the Groq
+LLM is active versus the extractive fallback.
+
+---
+
+## Setup
+
+### 1. Clone and install dependencies
 
 ```bash
-git clone https://github.com/yourusername/finrisk-ai.git
-cd finrisk-ai/finrisk
+git clone https://github.com/pragathigudaru9/finrisk.git
+cd finrisk/finrisk
 pip install -r requirements.txt
 ```
 
-### 2. Set Environment Variables
+### 2. Set environment variables
 
 ```bash
-export GROQ_API_KEY="gsk_..."       # Required for RAG
-export NEWSAPI_KEY="..."            # Optional (uses synthetic if missing)
+export GROQ_API_KEY="gsk_..."        # required for RAG responses
+export NEWSAPI_KEY="..."             # optional — uses synthetic data if missing
 ```
 
-### 3. Run the Full Pipeline
+### 3. Run ingestion (one-time)
 
 ```bash
-cd finrisk/
+python -m src.ingest
+```
+
+This downloads 10-K filings for 26 companies (2022–2024) from SEC EDGAR
+and writes `data/processed/finrisk_sections.parquet`.
+
+### 4. Run the rest of the pipeline
+
+```bash
 python run_pipeline.py
 ```
 
 Or run individual stages:
 
 ```bash
-python run_pipeline.py --stages 3 4   # chunking + indexing only
-python run_pipeline.py --stages 6a 6b 7 8  # signals + risk + eval
+python run_pipeline.py --stages 3 4        # chunk + index
+python run_pipeline.py --stages 6a 6b 7    # sentiment + z-score + risk scoring
+python run_pipeline.py --stages 8          # evaluation
 ```
 
-### 4. Launch the Dashboard
+### 5. Launch the dashboard
 
 ```bash
 streamlit run app.py
@@ -117,112 +152,126 @@ Open `http://localhost:8501`
 
 ---
 
-## 📊 Dashboard Pages
+## Dashboard Pages
 
 | Page | Description |
 |------|-------------|
-| 🏠 Company Overview | Risk gauges, Z-Score, sector heatmap |
-| 🔍 Risk Explorer | Browse & filter 15,000+ filing excerpts |
-| 📰 Sentiment Trends | 30-day FinBERT sentiment charts |
-| 🔄 Emerging Risks | YoY cosine similarity + new/removed risks |
-| 🤖 AI Assistant | RAG chatbot with citation-backed answers |
+| 🏠 Company Overview | Risk gauge, Z-Score, component breakdown, sector leaderboard |
+| 🔍 Risk Explorer | Search and browse 15,000+ filing excerpts by keyword and metadata filter |
+| 📰 Sentiment Trends | 30-day rolling FinBERT sentiment charts with bearish flag detection |
+| 🔄 Emerging Risks | YoY cosine similarity heatmap; sentence-level new/removed risk detection |
+| 💬 Risk Assistant | Conversational interface backed by hybrid RAG with source citations |
 
 ---
 
-## 📈 Research Results
+## Key Technical Concepts
 
-### Retrieval Ablation (Recall@5 / MRR)
+**Hybrid retrieval** — Combining dense (FAISS) and sparse (BM25) search
+captures both semantic similarity and exact keyword overlap. Dense search
+finds conceptually related passages; BM25 catches specific names, acronyms,
+and regulatory terms.
 
-| Method | Hit@5 | Hit@10 | MRR | NDCG@5 |
-|--------|-------|--------|-----|--------|
-| BM25 only | 0.200 | — | 0.117 | — |
-| FAISS only | 0.250 | — | 0.102 | — |
-| **Hybrid Fixed-size** | **0.200** | **0.300** | **0.096** | **0.038** |
-| **Hybrid Section-aware** ✅ | **0.250** | **0.300** | **0.129** | **0.072** |
+**Cross-encoder reranking** — Standard bi-encoder embeddings process the
+query and document independently, which trades speed for some accuracy. A
+cross-encoder sees the query and candidate together in a single forward pass
+through the Transformer, giving a much more precise relevance score. We apply
+it only to the top-40 candidates from the first-stage retrieval.
 
-> Section-aware hybrid retrieval achieves +25% MRR over fixed-size chunking, validating the smart chunking strategy.
+**FinBERT sentiment** — BERT fine-tuned on financial news text. Outputs
+probability scores for positive, negative, and neutral classes. We compute
+`p_positive − p_negative` as a single score in [−1, +1] and track 7-day and
+30-day rolling averages per company.
 
-### RAG Quality (Extractive — no LLM required)
+**Altman Z-Score** — Classic bankruptcy prediction formula:
 
-| Metric | Score | Target |
-|--------|-------|--------|
-| Faithfulness | **0.977** ✅ | ≥ 0.85 |
-| Answer Relevance | 0.301 | ≥ 0.80 |
-| Context Precision | 0.617 | ≥ 0.80 |
+```
+Z = 1.2·X1 + 1.4·X2 + 3.3·X3 + 0.6·X4 + 1.0·X5
 
-> Faithfulness is excellent (0.977) — answers are tightly grounded in retrieved chunks. Answer relevance improves significantly with Groq LLM enabled (vs. extractive fallback).
+X1 = Working Capital / Total Assets
+X2 = Retained Earnings / Total Assets
+X3 = EBIT / Total Assets
+X4 = Market Cap / Total Liabilities
+X5 = Revenue / Total Assets
+```
 
+Z > 2.99 → Safe   |   1.81 ≤ Z ≤ 2.99 → Grey Zone   |   Z < 1.81 → Distress
+
+**YoY emerging risk detection** — The Risk Factors section from consecutive
+filing years is embedded and compared via cosine similarity. If the similarity
+drops below 0.85, the year-pair is flagged. Sentence-level comparison then
+identifies exactly which risk sentences are new or have been removed.
 
 ---
 
-## 🔬 Key Technical Concepts
-
-**Hybrid RAG** — Combines FAISS (semantic/dense) + BM25 (keyword/sparse) retrieval. Semantic search finds conceptually similar text ("logistics disruptions" ≈ "supply chain issues"). BM25 ensures exact matches (tickers, acronyms). Hybrid outperforms either alone.
-
-**Cross-Encoder Reranking** — Bi-encoder (FAISS) is fast but slightly inaccurate. Cross-encoder (BGE-reranker-base) processes `(query, document)` jointly through the Transformer attention mechanism — much more accurate but slower, so used only on top-40 candidates.
-
-**FinBERT Sentiment** — BERT fine-tuned on financial news. Outputs `p_positive - p_negative` per headline ∈ [-1, +1]. 30-day rolling average detects sustained sentiment shifts.
-
-**Altman Z-Score** — Classic bankruptcy predictor: `Z = 1.2X1 + 1.4X2 + 3.3X3 + 0.6X4 + 1.0X5`
-
-**YoY Emerging Risk Detection** — Embeds consecutive years' Risk Factor sections → cosine similarity. If `sim < 0.85`, flag as changed. Sentence-level comparison finds specific new/removed risks.
-
----
-
-## 🧪 Tests
+## Tests
 
 ```bash
-cd finrisk/
 pip install pytest
-python -m pytest tests/ -v --tb=short
+python -m pytest finrisk/tests/ -v --tb=short
 ```
 
-The test suite covers 13 sections: config, raw data, chunking, indexes, retrieval, risk scores, sentiment, Z-scores, YoY trends, RAG, evaluation, chunking functions, and Z-score functions.
+The test suite has 13 sections covering configuration, raw data integrity,
+chunking correctness, index validity, retrieval quality, risk scores,
+sentiment data, Z-scores, YoY trends, RAG output format, evaluation data,
+chunking unit tests, and Z-score formula logic.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-finrisk-ai/
-├── finrisk/
-│   ├── app.py              # Streamlit dashboard
-│   ├── config.py           # Central configuration
-│   ├── run_pipeline.py     # Pipeline runner
-│   ├── requirements.txt
-│   ├── src/
-│   │   ├── chunk.py
-│   │   ├── classify.py
-│   │   ├── evaluate.py
-│   │   ├── index.py
-│   │   ├── ingest.py
-│   │   ├── rag.py          # Groq Llama-3.3-70b
-│   │   ├── retrieve.py     # Hybrid + reranker
-│   │   ├── risk_score.py
-│   │   ├── sentiment.py    # FinBERT
-│   │   └── zscore.py       # Altman Z-Score
-│   ├── tests/
-│   │   └── test_pipeline.py
-│   ├── data/
-│   │   ├── processed/      # finrisk_sections.parquet, risk_scores.parquet
-│   │   ├── eval/           # ablation_results.json, ragas_results.json
-│   │   ├── chunks/         # .jsonl chunk files (gitignored)
-│   │   ├── financials/     # zscore.parquet (gitignored)
-│   │   └── sentiment/      # sentiment_scores.parquet (gitignored)
-│   └── models/             # FAISS indexes, BM25 pickles (gitignored)
-├── finrisk_crash_course.md
+RAG/
 ├── .gitignore
-└── README.md
+├── README.md
+├── data.ipynb                   # early-stage data exploration
+└── finrisk/
+    ├── app.py                   # Streamlit dashboard (5 pages)
+    ├── config.py                # central config — paths, tickers, hyperparameters
+    ├── requirements.txt
+    ├── run_pipeline.py          # orchestrate stages 3–8 from CLI
+    ├── src/
+    │   ├── ingest.py            # Stage 1: SEC EDGAR download + section parsing
+    │   ├── classify.py          # Stage 2: DistilBERT boilerplate classifier
+    │   ├── chunk.py             # Stage 3: fixed-size + section-aware chunking
+    │   ├── index.py             # Stage 4: FAISS + BM25 index building
+    │   ├── retrieve.py          # Stage 5: hybrid retrieval + cross-encoder rerank
+    │   ├── sentiment.py         # Stage 6A: FinBERT news sentiment
+    │   ├── zscore.py            # Stage 6B: Altman Z-Score
+    │   ├── risk_score.py        # Stage 7: composite scoring + YoY trends
+    │   ├── rag.py               # Stage 8A: RAG with Groq Llama-3.3-70b
+    │   └── evaluate.py          # Stage 8B: ablation + RAGAS evaluation
+    ├── tests/
+    │   └── test_pipeline.py
+    └── data/
+        ├── processed/           # finrisk_sections.parquet, risk_scores.parquet
+        │                        # yoy_trends.parquet  (git-tracked)
+        ├── eval/                # qa_pairs.json, ablation_results.json,
+        │                        # ragas_results.json  (git-tracked)
+        ├── chunks/              # .jsonl chunk files (gitignored — large)
+        ├── financials/          # zscore.parquet (gitignored)
+        ├── sentiment/           # sentiment_scores.parquet (gitignored)
+        └── models/              # FAISS indexes, BM25 pickles (gitignored — large)
 ```
 
 ---
 
-## 🎓 Resume One-Liner
+## Technologies
 
-> Built an **Explainable Equity Risk Intelligence System** that analyzes 26 companies' SEC 10-K filings using Hybrid RAG (FAISS + BM25 + Cross-Encoder Reranking), FinBERT sentiment analysis, Altman Z-Score computation, and emerging risk detection via cosine similarity — achieving measurable retrieval quality improvements and providing citation-backed risk insights through a 5-page Streamlit dashboard powered by Groq Llama-3.3-70b.
+Python · FAISS · BM25 (`rank-bm25`) · sentence-transformers (BGE) ·
+Groq API (Llama-3.3-70b) · FinBERT (ProsusAI) · HuggingFace Transformers ·
+yfinance · NewsAPI · Streamlit · Plotly · pandas · tiktoken · PyTorch ·
+BeautifulSoup · sec-edgar-downloader
 
 ---
 
-## 📚 Technologies
+## Companies Covered
 
-`Python` · `FAISS` · `BM25` · `sentence-transformers` · `Groq (Llama-3.3-70b)` · `FinBERT` · `yfinance` · `Streamlit` · `Plotly` · `pandas` · `tiktoken` · `PyTorch`
+26 US large-cap equities across six sectors, with three years of 10-K
+filings each (2022–2024 filing years):
+
+**Technology** — AAPL, MSFT, GOOGL, NVDA, TSLA, AMD, META  
+**Financials** — JPM, GS, BAC, MS  
+**Healthcare** — JNJ, PFE, LLY, MRK, ABBV  
+**Energy** — XOM, CVX, COP  
+**Consumer** — WMT, PG, KO  
+**Industrials** — BA, CAT, DAL, AAL

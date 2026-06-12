@@ -1,5 +1,5 @@
 """
-FinRisk AI — Full Pipeline Runner
+FinRisk — Full Pipeline Runner
 
 Run all pipeline stages sequentially:
   Stage 3: Chunking
@@ -56,7 +56,7 @@ def run_stage(name: str, fn, *args, **kwargs):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="FinRisk AI Pipeline Runner")
+    parser = argparse.ArgumentParser(description="FinRisk Pipeline Runner")
     parser.add_argument(
         "--stages", nargs="+",
         default=["3", "4", "6a", "6b", "7", "8"],
@@ -66,7 +66,7 @@ def main():
     stages = [s.lower() for s in args.stages]
 
     logger.info("╔══════════════════════════════════════════════════════════╗")
-    logger.info("║         FinRisk AI — Full Pipeline Runner                ║")
+    logger.info("║            FinRisk — Full Pipeline Runner                  ║")
     logger.info("╚══════════════════════════════════════════════════════════╝")
     logger.info(f"Stages to run: {stages}")
 

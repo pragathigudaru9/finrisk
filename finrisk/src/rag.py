@@ -1,5 +1,5 @@
 """
-FinRisk AI — Stage 8A: Conversational RAG Pipeline
+FinRisk — Stage 8A: Conversational RAG Pipeline
 
 Pipeline:
   User query → Hybrid retrieval (top 5 chunks) → Groq LLM → Structured JSON answer

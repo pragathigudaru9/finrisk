@@ -1,4 +1,4 @@
-# FinRisk AI — Python Dependencies
+# FinRisk — Python Dependencies
 
 # Core
 pandas>=2.2.0

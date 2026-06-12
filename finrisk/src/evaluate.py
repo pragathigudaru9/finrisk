@@ -1,5 +1,5 @@
 """
-FinRisk AI — Stage 8B: Evaluation Suite
+FinRisk — Stage 8B: Evaluation Suite
 
 Two evaluation tasks:
   1. Chunking ablation: Hit@5, Hit@10, MRR, NDCG for fixed vs section-aware

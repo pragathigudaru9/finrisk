@@ -1,5 +1,5 @@
 """
-FinRisk AI — Stage 7: Risk Intelligence Layer
+FinRisk — Stage 7: Risk Intelligence Layer
 
 Three components:
   A) Composite Risk Score (filing + sentiment + Z-Score)
